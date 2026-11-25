@@ -1,0 +1,1281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#FCEDEA">
+<title>Pulse Check</title>
+<style>
+:root{
+  --bg:#F5F6F7; --ink:#1D2433; --mute:#5E6877; --rule:#D9DDE3;
+  --paper:#FCEDEA; --grid:#F6D3CD; --grid2:#EBA79C;
+  --good:#0F766E; --warn:#B45309; --bad:#B42318; --btn:#1D2433; --btntext:#F5F6F7;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#10151C; --ink:#E7EAF0; --mute:#9AA4B2; --rule:#2A3340;
+    --paper:#15222B; --grid:#1B2E3A; --grid2:#2B4757;
+    --good:#4FD1C5; --warn:#F2B35A; --bad:#FF8177; --btn:#E7EAF0; --btntext:#10151C;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
+.strip{position:relative;height:230px;padding-top:env(safe-area-inset-top);background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px),linear-gradient(var(--grid2) 1px,transparent 1px),linear-gradient(90deg,var(--grid2) 1px,transparent 1px);
+  background-size:10px 10px,10px 10px,50px 50px,50px 50px;border-bottom:2px solid var(--grid2)}
+#trace{position:absolute;inset:0;width:100%;height:100%}
+.readout{position:absolute;left:16px;top:calc(12px + env(safe-area-inset-top));pointer-events:none}
+.now{display:flex;align-items:baseline;gap:6px}
+.now span{font-size:54px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.now small{font-size:18px;color:var(--mute);font-weight:600}
+#nowLabel{font-size:14px;color:var(--mute);margin-top:2px}
+.brand{position:absolute;right:16px;top:calc(16px + env(safe-area-inset-top));font-weight:800;letter-spacing:-.01em}
+.tabs{display:flex;border-bottom:1px solid var(--rule);background:var(--bg);position:sticky;top:0;z-index:5}
+.tabs button{flex:1;min-height:48px;background:none;border:0;border-bottom:3px solid transparent;color:var(--mute);font:inherit;font-weight:700;cursor:pointer}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--ink)}
+.tabs button{padding:0 2px;font-size:15px}
+main{max-width:640px;margin:0 auto;padding:18px 16px 64px}
+h2{font-size:22px;line-height:1.25;letter-spacing:-.02em;margin:0 0 6px}
+h3{font-size:16px;margin:22px 0 8px}
+p{margin:0 0 10px}
+.mute{color:var(--mute)}
+.banner{border-left:4px solid var(--warn);padding:8px 12px;margin:0 0 16px;background:color-mix(in srgb,var(--warn) 10%,transparent)}
+.group{margin:0 0 12px}
+.group .lbl{font-size:14px;color:var(--mute);margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:44px;padding:0 14px;border-radius:22px;border:1.5px solid var(--rule);background:none;color:var(--ink);font:inherit;cursor:pointer}
+.chip[aria-pressed=true]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.btn{display:block;width:100%;min-height:54px;border:0;border-radius:10px;background:var(--btn);color:var(--btntext);font:inherit;font-size:17px;font-weight:800;cursor:pointer;margin:16px 0 6px}
+.btn.sec{background:none;color:var(--ink);border:1.5px solid var(--ink);font-size:15px;min-height:46px;margin:8px 0}
+.btn:disabled{opacity:.5}
+:focus-visible{outline:3px solid var(--good);outline-offset:2px}
+ul.stages{list-style:none;padding:0;margin:14px 0}
+ul.stages li{display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--rule);color:var(--mute)}
+ul.stages li i{width:10px;height:10px;border-radius:50%;border:2px solid var(--rule);flex:none;transform:translateY(1px)}
+ul.stages li.run{color:var(--ink);font-weight:700}
+ul.stages li.run i{border-color:var(--warn);background:var(--warn)}
+ul.stages li.ok i{border-color:var(--good);background:var(--good)}
+ul.stages li.ok{color:var(--ink)}
+ul.stages li.err i{border-color:var(--bad);background:var(--bad)}
+ul.stages li span.d{margin-left:auto;font-weight:500;color:var(--mute);font-size:14px}
+table{width:100%;border-collapse:collapse}
+td,th{padding:9px 6px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
+th{font-size:14px;color:var(--mute);font-weight:600}
+td.v{text-align:right;font-weight:700}
+.good{color:var(--good)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+.find{border-left:5px solid var(--good);padding:2px 0 2px 12px;margin:0 0 18px}
+.find.warn{border-color:var(--warn)} .find.bad{border-color:var(--bad)}
+.find h4{margin:0 0 2px;font-size:17px;color:var(--ink)}
+.find p{color:var(--mute);margin:0 0 6px}
+details summary{cursor:pointer;font-weight:700;min-height:40px;display:flex;align-items:center}
+details ul{margin:4px 0 8px;padding-left:20px}
+details li{margin:0 0 6px}
+.tag{font-weight:700;color:var(--ink)}
+textarea{width:100%;min-height:150px;border:1.5px solid var(--rule);border-radius:8px;background:none;color:var(--ink);font:14px/1.45 ui-monospace,monospace;padding:10px}
+.runrow{display:flex;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule)}
+.runrow .info{flex:1;min-width:0}
+.runrow .info b{display:block}
+.runrow button{min-height:40px;padding:0 12px;border-radius:8px;border:1.5px solid var(--rule);background:none;color:var(--ink);font:inherit;font-size:14px;cursor:pointer}
+.runrow button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+dl.kv{display:grid;grid-template-columns:1fr auto;gap:0;margin:8px 0}
+dl.kv dt,dl.kv dd{margin:0;padding:8px 0;border-bottom:1px solid var(--rule)}
+dl.kv dd{font-weight:700;text-align:right}
+.ev{font-size:14px;color:var(--mute);margin:0;padding:0;list-style:none}
+.ev li{padding:4px 0;border-bottom:1px solid var(--rule)}
+
+.cell{border-left:5px solid var(--rule);padding:2px 0 2px 12px;margin:0 0 16px}
+.cell.good{border-color:var(--good)}.cell.warn{border-color:var(--warn)}.cell.bad{border-color:var(--bad)}
+.cell h4{margin:0 0 4px;font-size:17px}
+.nb{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule);font-size:15px}
+.steps{padding-left:22px;margin:8px 0}
+.steps li{padding:6px 0}
+.row2{display:flex;gap:8px}
+.row2 .btn{margin:8px 0}
+input.txt{width:100%;min-height:46px;border:1.5px solid var(--rule);border-radius:8px;background:none;color:var(--ink);font:inherit;padding:0 12px;margin:6px 0}
+.sc{padding:8px 0;border-bottom:1px solid var(--rule)}
+.sc .btn{margin:4px 0}
+.sc p{margin:0 0 4px;font-size:14px}
+pre.raw{white-space:pre-wrap;word-break:break-all;font:12px/1.4 ui-monospace,monospace;max-height:220px;overflow:auto;border:1.5px solid var(--rule);border-radius:8px;padding:8px;margin:6px 0}
+.out{min-height:1.2em;margin:6px 0 14px}
+.find .btn.sec{margin:6px 0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<header class="strip">
+  <canvas id="trace" aria-label="Live latency trace"></canvas>
+  <div class="readout">
+    <div class="now"><span id="nowMs">--</span><small>ms</small></div>
+    <div id="nowLabel">Waiting for first reply</div>
+  </div>
+  <div class="brand">Pulse Check</div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-tab="test">Test</button>
+  <button role="tab" aria-selected="false" data-tab="watch">Watch</button>
+  <button role="tab" aria-selected="false" data-tab="radio">Radio</button>
+  <button role="tab" aria-selected="false" data-tab="tools">Tools</button>
+  <button role="tab" aria-selected="false" data-tab="compare">Compare</button>
+</nav>
+
+<main>
+<!-- TEST -->
+<section id="tab-test">
+  <div id="wifiBanner" class="banner" hidden>Wi-Fi is connected. Turn Wi-Fi off so this test measures mobile data.</div>
+  <h2>Find out why mobile data drops</h2>
+  <p class="mute">Runs one check at a time so idle latency is never polluted by load. In the Android app it reads your tower and signal directly. In a browser, tell it what you see on the phone.</p>
+
+  <div id="groups"></div>
+
+  <div class="group">
+    <div class="lbl">Data to spend</div>
+    <div class="chips" id="modeChips">
+      <button class="chip" aria-pressed="true" data-mode="light">Light, up to 30 MB</button>
+      <button class="chip" aria-pressed="false" data-mode="full">Full, up to 200 MB</button>
+    </div>
+  </div>
+
+  <button class="btn" id="runBtn">Run diagnosis</button>
+  <ul class="stages" id="stages"></ul>
+
+  <div id="results" hidden>
+    <h2 id="verdict"></h2>
+    <p class="mute" id="verdictSub"></p>
+    <h3>Ranked bottlenecks</h3>
+    <div id="findings"></div>
+    <h3>Measurements</h3>
+    <table id="ledger"></table>
+    <p class="mute" style="margin-top:10px">This run is saved automatically. Apply a fix, run again, then open Compare.</p>
+    <button class="btn sec" id="markBefore">Use as Before</button>
+    <button class="btn sec" id="markAfter">Use as After</button>
+  </div>
+</section>
+
+<!-- WATCH -->
+<section id="tab-watch" hidden>
+  <h2>Catch the drops as they happen</h2>
+  <p class="mute">Instability comes and goes, so a single test can miss it. Start this, keep the screen on, and use your phone normally nearby. It sends one tiny request per second and logs every outage and network change.</p>
+  <div class="chips" id="watchLen">
+    <button class="chip" aria-pressed="false" data-min="2">2 min</button>
+    <button class="chip" aria-pressed="true" data-min="5">5 min</button>
+    <button class="chip" aria-pressed="false" data-min="10">10 min</button>
+  </div>
+  <button class="btn" id="watchBtn">Start watching</button>
+  <dl class="kv" id="watchStats"></dl>
+  <p id="watchVerdict"></p>
+  <h3>Events</h3>
+  <ul class="ev" id="watchLog"><li>Nothing yet.</li></ul>
+</section>
+
+<!-- RADIO -->
+<section id="tab-radio" hidden>
+  <h2>Your tower, live</h2>
+  <div id="radioOff" class="banner" hidden></div>
+  <div id="radioLive"><p class="mute">Reading the radio...</p></div>
+
+  <h3>Force a new tower</h3>
+  <p class="mute">Android apps cannot pick a tower. What works is making the network choose again, which can land you on a stronger one.</p>
+  <ol class="steps">
+    <li>Save the tower you are on now.<button class="btn sec" id="flowSave">Save current tower</button></li>
+    <li>Switch airplane mode on for 15 seconds, then off. Or reselect your carrier.
+      <div class="row2"><button class="btn sec" id="flowAir">Airplane mode</button><button class="btn sec" id="flowOp">Choose carrier</button></div></li>
+    <li>When the bars return, compare.<button class="btn sec" id="flowCmp">Compare towers</button></li>
+  </ol>
+  <p id="flowOut"></p>
+
+  <h3>Find the best spot</h3>
+  <p class="mute">Stand somewhere, name it, and measure. The strongest signal goes to the top.</p>
+  <input class="txt" id="spotName" placeholder="Spot name, for example Window">
+  <button class="btn sec" id="spotBtn">Measure here (about 6 s)</button>
+  <div id="spots"></div>
+
+  <h3>Phone settings shortcuts</h3>
+  <div id="shortcuts"></div>
+
+  <h3>Tower log</h3>
+  <ul class="ev" id="radioLog"><li>No tower or network changes yet.</li></ul>
+</section>
+
+<!-- TOOLS -->
+<section id="tab-tools" hidden>
+  <h2>Phone controls</h2>
+  <p class="mute">These use Shizuku to do what apps normally cannot. Nothing here is sent anywhere.</p>
+  <div id="szStatus"></div>
+
+  <div id="szBody" hidden>
+    <h3>Reconnect to the network</h3>
+    <p class="mute">Turns airplane mode on for about 6 seconds, then off by itself, and tells you whether the phone landed on a different tower.</p>
+    <button class="btn" id="tReconnect">Reconnect now</button>
+    <p class="out" id="tReconnectOut"></p>
+    <button class="btn sec" id="tData">Switch mobile data off and on</button>
+    <p class="mute">A lighter reset than airplane mode. Data stays off for 3 seconds.</p>
+    <p class="out" id="tDataOut"></p>
+
+    <h3>Private DNS</h3>
+    <p class="mute">If your carrier's DNS is slow, pick a public one. Automatic puts it back.</p>
+    <p id="dnsNow">Reading...</p>
+    <div class="chips" id="dnsChips">
+      <button class="chip" aria-pressed="false" data-p="cloudflare">Cloudflare 1.1.1.1</button>
+      <button class="chip" aria-pressed="false" data-p="google">Google 8.8.8.8</button>
+      <button class="chip" aria-pressed="false" data-p="auto">Automatic</button>
+      <button class="chip" aria-pressed="false" data-p="off">Off</button>
+    </div>
+    <p class="out" id="dnsOut"></p>
+
+    <h3>Lock to 4G (experimental)</h3>
+    <p class="mute">Stops the phone hopping between 5G and 4G by switching 5G off. The command differs between phones, so this reads the setting first and changes nothing if it cannot.</p>
+    <div class="chips" id="ntSlot">
+      <button class="chip" aria-pressed="true" data-s="0">SIM 1</button>
+      <button class="chip" aria-pressed="false" data-s="1">SIM 2</button>
+    </div>
+    <p id="ntNow">Reading...</p>
+    <div class="row2">
+      <button class="btn sec" id="ntLock">Lock to 4G</button>
+      <button class="btn sec" id="ntRestore">Restore</button>
+    </div>
+    <p class="out" id="ntOut"></p>
+
+    <h3>Modem report</h3>
+    <p class="mute">Carrier aggregation, channel widths and 5G state, where your phone reports them.</p>
+    <button class="btn sec" id="tModem">Read modem report</button>
+    <div id="modemOut"></div>
+
+    <h3>Real ping and route</h3>
+    <p class="mute">ICMP pings to 1.1.1.1 and 8.8.8.8, plus the first hops of the route. Takes about 20 seconds. With Shizuku connected, the Test tab adds this too.</p>
+    <button class="btn sec" id="tPing">Run ping and route</button>
+    <div id="pingOut"></div>
+
+    <p class="mute" style="margin-top:18px">Picking a specific tower or locking a band needs root. Shizuku cannot do that.</p>
+  </div>
+</section>
+
+<!-- COMPARE -->
+<section id="tab-compare" hidden>
+  <h2>Before and after</h2>
+  <p class="mute">Pick two saved runs. Green means better, red means worse.</p>
+  <div id="cmpTable"></div>
+  <h3>Saved runs</h3>
+  <div id="runs"></div>
+  <h3>Summary for your carrier</h3>
+  <p class="mute">Copy this into a support chat or email.</p>
+  <textarea id="summary" readonly></textarea>
+  <button class="btn sec" id="copyBtn">Copy summary</button>
+</section>
+</main>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rnd = () => Math.random().toString(36).slice(2, 10);
+
+/* ---------- storage (falls back to memory if blocked) ---------- */
+const mem = {};
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return k in mem ? mem[k] : d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){ mem[k] = v; } }
+};
+let db = store.get('pulsecheck.v1', {runs:[], before:null, after:null});
+const save = () => store.set('pulsecheck.v1', db);
+
+/* ---------- targets ---------- */
+const CF = {name:'Cloudflare', url:'https://speed.cloudflare.com/__down?bytes=0', mode:'cors'};
+const GG = {name:'Google', url:'https://www.gstatic.com/generate_204', mode:'no-cors'};
+const LIGHT = {name:'Light', dl:{secs:5, cap:20e6, streams:3}, ul:{secs:4, cap:8e6, streams:2}};
+const FULL  = {name:'Full',  dl:{secs:9, cap:150e6, streams:4}, ul:{secs:7, cap:40e6, streams:3}};
+
+let busy = false, watching = false, mode = 'light', lastWatch = null;
+const manual = {net:null, signal:null, place:null, vpn:null};
+
+/* ---------- stats ---------- */
+function q(sorted, p){ const i = (sorted.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i); return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo); }
+function stats(arr, total){
+  const v = arr.filter(x => x != null);
+  const t = total || arr.length;
+  const loss = t ? (t - v.length) / t * 100 : 0;
+  if (!v.length) return {n:0, loss};
+  const s = [...v].sort((a, b) => a - b);
+  const med = q(s, .5), p95 = q(s, .95);
+  let j = 0; for (let i = 1; i < v.length; i++) j += Math.abs(v[i] - v[i-1]);
+  j /= Math.max(v.length - 1, 1);
+  const spikes = v.filter(x => x > Math.max(med * 3, med + 100)).length;
+  return {n:v.length, med, p95, min:s[0], max:s[s.length-1], jit:j, loss, spikes, spikeRate:spikes / v.length * 100};
+}
+const med = a => { const v = a.filter(x => x != null).sort((x, y) => x - y); return v.length ? q(v, .5) : null; };
+
+/* ---------- hero trace ---------- */
+let trace = [], raf = 0;
+function push(ms, phase){
+  trace.push({ms, ph:phase});
+  if (trace.length > 400) trace.shift();
+  $('#nowMs').textContent = ms == null ? 'lost' : Math.round(ms);
+  $('#nowLabel').textContent = ({idle:'Idle reply time', load:'Reply time under load', live:'Live reply time', watch:'Watching'})[phase] || '';
+  if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); });
+}
+function css(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function draw(){
+  const cv = $('#trace'), r = cv.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+  if (cv.width !== Math.round(r.width * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height);
+  const pts = trace.slice(-80); if (!pts.length) return;
+  const top = 74, bot = r.height - 14, H = bot - top, W = r.width;
+  const ok = pts.filter(p => p.ms != null).map(p => p.ms).sort((a, b) => a - b);
+  const ymax = Math.max(250, Math.min(3000, (ok.length ? q(ok, .95) : 200) * 1.4));
+  const Y = ms => top + (1 - Math.log10(Math.max(ms, 10) / 10) / Math.log10(ymax / 10)) * H;
+  const X = i => 10 + i / 79 * (W - 20);
+  const off = 80 - pts.length;
+  const ink = css('--ink'), warn = css('--warn'), bad = css('--bad');
+  g.lineWidth = 2.2; g.lineJoin = 'round'; g.lineCap = 'round';
+  let prev = null;
+  pts.forEach((p, k) => {
+    const x = X(k + off);
+    if (p.ms == null) {
+      g.strokeStyle = bad; g.globalAlpha = .55; g.lineWidth = 2; g.setLineDash([4, 4]);
+      g.beginPath(); g.moveTo(x, top - 6); g.lineTo(x, bot); g.stroke();
+      g.setLineDash([]); g.globalAlpha = 1; g.lineWidth = 2.2; prev = null; return;
+    }
+    const y = Y(p.ms);
+    g.strokeStyle = p.ph === 'load' ? warn : ink;
+    if (prev) { g.beginPath(); g.moveTo(prev.x, prev.y); g.lineTo(x, y); g.stroke(); }
+    prev = {x, y};
+  });
+  if (prev) { g.fillStyle = ink; g.beginPath(); g.arc(prev.x, prev.y, 4, 0, 7); g.fill(); }
+}
+addEventListener('resize', draw);
+
+/* ---------- probes ---------- */
+async function probe(t, timeout = 2500){
+  const url = t.url + (t.url.includes('?') ? '&' : '?') + 'r=' + rnd();
+  const c = new AbortController(), to = setTimeout(() => c.abort(), timeout);
+  const t0 = performance.now();
+  try { await fetch(url, {cache:'no-store', mode:t.mode, signal:c.signal, credentials:'omit'}); clearTimeout(to); return performance.now() - t0; }
+  catch(e){ clearTimeout(to); return null; }
+}
+
+/* ---------- stages ---------- */
+const STAGE_BASE = ['Connection check', 'Idle ping, Cloudflare (30)', 'Idle ping, Google (30)', 'DNS lookups', 'Download and loaded latency', 'Upload and loaded latency'];
+let STAGES = [...STAGE_BASE, 'Analysis'], ICMP = -1, ANI = 6;
+function buildStages(){
+  const icmp = szReady();
+  STAGES = icmp ? [...STAGE_BASE, 'Real ping, ICMP (Shizuku)', 'Analysis'] : [...STAGE_BASE, 'Analysis'];
+  ICMP = icmp ? 6 : -1; ANI = STAGES.length - 1;
+  $('#stages').innerHTML = STAGES.map((s, i) => `<li data-i="${i}"><i></i>${s}<span class="d"></span></li>`).join(''); }
+function setStage(i, st, d){
+  const li = $(`#stages li[data-i="${i}"]`); if (!li) return;
+  li.className = st; if (d != null) li.querySelector('.d').textContent = d;
+}
+
+/* ---------- idle ping ---------- */
+async function pingRun(t, n, stage){
+  await probe(t); await probe(t);               // discard handshake
+  const res = [];
+  for (let i = 0; i < n; i++){
+    const ms = await probe(t);
+    res.push(ms); push(ms, 'idle');
+    setStage(stage, 'run', `${i + 1}/${n}${ms != null ? ' · ' + Math.round(ms) + ' ms' : ' · lost'}`);
+    await sleep(Math.max(0, 250 - (ms || 250)));
+  }
+  return res;
+}
+
+/* ---------- DNS ---------- */
+async function timeFail(url){
+  const c = new AbortController(), to = setTimeout(() => c.abort(), 4000), t0 = performance.now();
+  try { await fetch(url, {mode:'no-cors', cache:'no-store', signal:c.signal}); }
+  catch(e){ if (c.signal.aborted) { clearTimeout(to); return null; } }
+  clearTimeout(to); return performance.now() - t0;
+}
+async function dnsSystem(n = 5){
+  const d = [];
+  for (let i = 0; i < n; i++){
+    const url = `https://p${rnd()}.1-1-1-1.sslip.io/`;
+    const cold = await timeFail(url), warm = await timeFail(url);
+    if (cold != null && warm != null) d.push(Math.max(0, cold - warm));
+  }
+  return med(d);
+}
+async function dnsDoH(kind, n = 4){
+  const mk = name => kind === 'cf' ? `https://cloudflare-dns.com/dns-query?name=${name}&type=A` : `https://dns.google/resolve?name=${name}&type=A`;
+  const opt = kind === 'cf' ? {headers:{accept:'application/dns-json'}} : {};
+  const t = async url => { const t0 = performance.now(); try { const r = await fetch(url, {cache:'no-store', ...opt}); await r.text(); return performance.now() - t0; } catch(e){ return null; } };
+  await t(mk(`p${rnd()}.example.com`));          // open connection
+  const d = [];
+  for (let i = 0; i < n; i++){
+    const u = mk(`p${rnd()}.example.com`);
+    const cold = await t(u), warm = await t(u);
+    if (cold != null && warm != null) d.push(Math.max(0, cold - warm));
+  }
+  return med(d);
+}
+
+/* ---------- throughput ---------- */
+async function download({secs, cap, streams}, stage){
+  const ctrl = new AbortController(), t0 = performance.now(), end = t0 + secs * 1000;
+  let bytes = 0, mark = null, done = false;
+  const ui = setInterval(() => { const el = Math.max((performance.now() - t0) / 1000, .1); setStage(stage, 'run', `${(bytes * 8 / 1e6 / el).toFixed(1)} Mbps · ${(bytes / 1e6).toFixed(0)} MB`); }, 300);
+  const worker = async () => {
+    while (!done){
+      if (performance.now() > end) { done = true; break; }
+      try {
+        const r = await fetch(`https://speed.cloudflare.com/__down?bytes=10000000&r=${rnd()}`, {cache:'no-store', signal:ctrl.signal});
+        if (!r.body){ bytes += (await r.arrayBuffer()).byteLength; continue; }
+        const rd = r.body.getReader();
+        for (;;){
+          const {done:d, value} = await rd.read(); if (d) break;
+          bytes += value.length; const now = performance.now();
+          if (!mark && now - t0 > 1000) mark = {t:now, b:bytes};
+          if (now > end || bytes >= cap){ done = true; ctrl.abort(); return; }
+        }
+      } catch(e){ if (done) return; await sleep(300); }
+    }
+  };
+  const timer = setTimeout(() => { done = true; ctrl.abort(); }, secs * 1000 + 3000);
+  await Promise.all(Array.from({length:streams}, worker));
+  clearTimeout(timer); clearInterval(ui);
+  const m = mark || {t:t0, b:0};
+  const mbps = bytes > m.b ? (bytes - m.b) * 8 / 1e6 / Math.max((performance.now() - m.t) / 1000, .2) : 0;
+  return {mbps, mb:bytes / 1e6};
+}
+async function upload({secs, cap, streams}, stage){
+  const t0 = performance.now(), end = t0 + secs * 1000, blob = new Blob([new Uint8Array(512 * 1024)]);
+  let sent = 0, mark = null, done = false; const xs = new Set();
+  const ui = setInterval(() => { const el = Math.max((performance.now() - t0) / 1000, .1); setStage(stage, 'run', `${(sent * 8 / 1e6 / el).toFixed(1)} Mbps · ${(sent / 1e6).toFixed(0)} MB`); }, 300);
+  const worker = async () => {
+    while (!done && performance.now() < end && sent < cap){
+      await new Promise(res => {
+        const x = new XMLHttpRequest(); xs.add(x); let last = 0;
+        x.open('POST', 'https://speed.cloudflare.com/__up?r=' + rnd());
+        x.timeout = 8000;
+        x.upload.onprogress = e => { sent += e.loaded - last; last = e.loaded; const now = performance.now(); if (!mark && now - t0 > 1000) mark = {t:now, b:sent}; };
+        x.onloadend = () => { xs.delete(x); res(); };
+        x.send(blob);
+      });
+    }
+  };
+  const timer = setTimeout(() => { done = true; xs.forEach(x => x.abort()); }, secs * 1000 + 3000);
+  await Promise.all(Array.from({length:streams}, worker));
+  clearTimeout(timer); clearInterval(ui);
+  const m = mark || {t:t0, b:0};
+  const mbps = sent > m.b ? (sent - m.b) * 8 / 1e6 / Math.max((performance.now() - m.t) / 1000, .2) : 0;
+  return {mbps, mb:sent / 1e6};
+}
+async function loaded(kind, cfg, stage){
+  const lat = []; let stop = false;
+  const pinger = (async () => { await sleep(900); while (!stop){ const ms = await probe(GG, 2500); lat.push(ms); push(ms, 'load'); await sleep(150); } })();
+  const speed = await (kind === 'down' ? download(cfg, stage) : upload(cfg, stage));
+  stop = true; await pinger;
+  const adj = lat.map(x => x == null ? 2500 : x);
+  return {speed, lat:stats(adj, adj.length), lost:lat.filter(x => x == null).length};
+}
+
+/* ---------- connection info ---------- */
+function conn(){
+  const c = navigator.connection || navigator.webkitConnection || navigator.mozConnection;
+  return c ? {type:c.type || null, eff:c.effectiveType || null, rtt:c.rtt, dl:c.downlink, save:!!c.saveData} : {};
+}
+function updateBanner(){ $('#wifiBanner').hidden = conn().type !== 'wifi'; }
+(navigator.connection || {}).addEventListener?.('change', updateBanner);
+updateBanner();
+
+/* ---------- radio (native Android app only) ---------- */
+const Radio = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Radio;
+const radioState = {ok:false, last:null, buf:[], events:[], prevKey:null, prevCell:null, prevNet:null};
+let polling = false, watchT0 = 0, flow = store.get('pulsecheck.flow', null);
+if (!db.spots) db.spots = [];
+function keepAwake(on){ try { Radio && Radio.keepAwake({on}); } catch(e){} }
+
+const rsrpGrade = v => v == null ? ['—', ''] : v >= -80 ? ['Excellent', 'good'] : v >= -90 ? ['Good', 'good'] : v >= -100 ? ['Fair', 'warn'] : v >= -110 ? ['Poor', 'bad'] : ['Very poor', 'bad'];
+const sinrGrade = v => v == null ? ['—', ''] : v >= 20 ? ['Excellent', 'good'] : v >= 13 ? ['Good', 'good'] : v >= 0 ? ['Fair', 'warn'] : ['Poor', 'bad'];
+const chipOf = v => v == null ? null : v >= -90 ? 'Strong' : v >= -105 ? 'Medium' : 'Weak';
+const netShort = n => !n ? null : n.startsWith('5G') ? '5G' : n.startsWith('4G') ? '4G' : n.startsWith('3G') ? '3G' : n.startsWith('2G') ? '2G' : null;
+const rKey = c => c ? `${c.rat}:${c.id}:${c.pci}` : null;
+const bandName = c => (c.bands && c.bands.length) ? c.bands.map(b => (c.rat === 'NR' ? 'n' : 'B') + b).join('/') : (c.arfcn != null ? 'ch ' + c.arfcn : '?');
+const cellLabel = c => `${c.rat} ${c.id != null ? c.id : '?'} (PCI ${c.pci != null ? c.pci : '?'}, ${bandName(c)})`;
+function primary(s){
+  if (!s) return null;
+  const reg = (s.cells || []).filter(c => c.reg);
+  return reg.find(c => c.rat === 'LTE') || reg.find(c => c.rat === 'NR') || reg[0] || null;
+}
+function nbDelta(s, p){
+  if (!s || !p || p.rsrp == null) return null;
+  const v = (s.cells || []).filter(c => !c.reg && c.rat === p.rat && c.rsrp != null).map(c => c.rsrp);
+  return v.length ? Math.max(...v) - p.rsrp : null;
+}
+function logRadio(kind, text){
+  radioState.events.push({ts:Date.now(), kind, text});
+  if (radioState.events.length > 200) radioState.events.shift();
+  if (watching) wlog(clock((performance.now() - watchT0) / 1000), text);
+  renderRadioLog();
+}
+async function radioPoll(){
+  if (!Radio || !radioState.ok || polling) return null;
+  polling = true;
+  try {
+    const s = await Radio.snapshot();
+    (s.cells || []).forEach(c => { if (c.rat === 'LTE' && c.sinr != null && Math.abs(c.sinr) > 40) c.sinr = c.sinr / 10; });
+    const p = primary(s), key = rKey(p), now = Date.now();
+    radioState.last = s;
+    radioState.buf.push({ts:now, rsrp:p ? p.rsrp : null, sinr:p ? p.sinr : null, key, net:s.netType, nb:nbDelta(s, p)});
+    if (radioState.buf.length > 600) radioState.buf.shift();
+    if (key && radioState.prevKey && key !== radioState.prevKey) logRadio('cell', `Tower changed: ${cellLabel(radioState.prevCell)} to ${cellLabel(p)}`);
+    if (s.netType && radioState.prevNet && s.netType !== radioState.prevNet) logRadio('net', `Network type: ${radioState.prevNet} to ${s.netType}`);
+    if (key){ radioState.prevKey = key; radioState.prevCell = p; }
+    if (s.netType) radioState.prevNet = s.netType;
+    renderRadio();
+    return s;
+  } catch(e){ return null; }
+  finally { polling = false; }
+}
+function radioSummary(t0){
+  const b = radioState.buf.filter(x => x.ts >= t0); if (!b.length) return null;
+  const r = b.map(x => x.rsrp).filter(v => v != null), sn = b.map(x => x.sinr).filter(v => v != null), nb = b.map(x => x.nb).filter(v => v != null);
+  const ev = radioState.events.filter(e => e.ts >= t0), p = primary(radioState.last), rs = med(r);
+  const net = b[b.length - 1].net || null;
+  return {n:b.length, rsrp:rs, rsrpMin:r.length ? Math.min(...r) : null, sinr:med(sn), nbDelta:nb.length ? Math.max(...nb) : null,
+    cellChanges:ev.filter(e => e.kind === 'cell').length, netChanges:ev.filter(e => e.kind === 'net').length,
+    net, netShort:netShort(net), signal:chipOf(rs), cell:p ? cellLabel(p) : null, band:p ? bandName(p) : null};
+}
+function cellCard(c){
+  const [g, cls] = rsrpGrade(c.rsrp), [sg, scls] = sinrGrade(c.sinr);
+  const id = c.rat === 'LTE' && c.id != null ? `${c.id} (eNB ${Math.floor(c.id / 256)}, sector ${c.id % 256})` : (c.id != null ? c.id : '?');
+  const rows = [['Band', bandName(c)], ['Cell ID', id], ['PCI', c.pci != null ? c.pci : '—'], ['Area code', c.tac != null ? c.tac : '—'],
+    ['Signal (RSRP)', c.rsrp != null ? `<span class="${cls}">${c.rsrp} dBm, ${g}</span>` : '—'],
+    ['Quality (RSRQ)', c.rsrq != null ? c.rsrq + ' dB' : '—'],
+    ['SINR', c.sinr != null ? `<span class="${scls}">${Math.round(c.sinr)} dB, ${sg}</span>` : '—']];
+  if (c.rat === 'LTE' && c.ta != null && c.ta >= 0 && c.ta < 1282) rows.push(['Distance to tower', 'about ' + Math.round(c.ta * 78) + ' m']);
+  return `<div class="cell ${cls}"><h4>${c.rat} serving cell</h4><dl class="kv">${rows.map(r => `<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('')}</dl></div>`;
+}
+function renderRadio(){
+  const el = $('#radioLive'), s = radioState.last; if (!el || !s) return;
+  const regs = (s.cells || []).filter(c => c.reg), p = primary(s);
+  const nbs = (s.cells || []).filter(c => !c.reg && c.rsrp != null).sort((a, b) => b.rsrp - a.rsrp).slice(0, 6);
+  el.innerHTML = `<p><b>${esc(s.netType || 'Unknown network')}</b> · ${esc(s.operator || 'carrier unknown')}${s.roaming ? ' · roaming' : ''}</p>` +
+    (regs.length ? regs.map(cellCard).join('') : '<p class="mute">No serving cell reported. Make sure location is on.</p>') +
+    (nbs.length ? '<h3>Nearby cells</h3>' + nbs.map(c => {
+      const d = p && p.rat === c.rat && p.rsrp != null ? c.rsrp - p.rsrp : null;
+      return `<div class="nb"><span>${esc(cellLabel(c))}</span><b class="${rsrpGrade(c.rsrp)[1]}">${c.rsrp} dBm${d != null ? ` (${d >= 0 ? '+' : ''}${d} dB)` : ''}</b></div>`;
+    }).join('') : '');
+}
+function renderRadioLog(){
+  const el = $('#radioLog'); if (!el) return;
+  el.innerHTML = radioState.events.length ? radioState.events.slice(-30).reverse().map(e => `<li>${new Date(e.ts).toLocaleTimeString()} ${esc(e.text)}</li>`).join('') : '<li>No tower or network changes yet.</li>';
+}
+function renderFlow(){
+  const out = $('#flowOut'); if (!out) return;
+  out.textContent = flow ? `Saved ${when(flow.ts)}: ${flow.cell}, ${flow.rsrp != null ? flow.rsrp + ' dBm' : 'signal unknown'}.` : '';
+}
+async function flowSave(){
+  const s = await radioPoll() || radioState.last, p = primary(s);
+  if (!p){ $('#flowOut').textContent = 'No serving cell yet. Allow access above, then try again.'; return; }
+  flow = {ts:Date.now(), cell:cellLabel(p), key:rKey(p), rsrp:p.rsrp, net:s.netType}; store.set('pulsecheck.flow', flow); renderFlow();
+}
+async function flowCompare(){
+  if (!flow){ $('#flowOut').textContent = 'Save your current tower first.'; return; }
+  const s = await radioPoll() || radioState.last, p = primary(s);
+  if (!p){ $('#flowOut').textContent = 'No cell reported yet. Wait for the bars to return, then tap again.'; return; }
+  const d = p.rsrp != null && flow.rsrp != null ? p.rsrp - flow.rsrp : null;
+  const sig = d == null ? '' : ` Signal ${flow.rsrp} to ${p.rsrp} dBm (${d >= 0 ? '+' : ''}${d} dB).`;
+  $('#flowOut').textContent = rKey(p) === flow.key
+    ? `Same tower as before: ${cellLabel(p)}. The network chose it again.${sig} If the signal is weak, move or try another network type.`
+    : `New tower: ${flow.cell} to ${cellLabel(p)}.${sig} Run the Test tab to see if it is steadier.`;
+}
+async function measureSpot(){
+  const btn = $('#spotBtn'), name = $('#spotName').value.trim() || 'Spot ' + (db.spots.length + 1);
+  if (!radioState.ok){ alert('Allow radio access first.'); return; }
+  btn.disabled = true; btn.textContent = 'Measuring...';
+  const got = [];
+  for (let i = 0; i < 6; i++){ const p = primary(await radioPoll()); if (p && p.rsrp != null) got.push(p); await sleep(900); }
+  btn.disabled = false; btn.textContent = 'Measure here (about 6 s)';
+  if (!got.length){ alert('No signal reading came back. Check location is on.'); return; }
+  const sn = got.map(g => g.sinr).filter(v => v != null);
+  db.spots.push({name, rsrp:med(got.map(g => g.rsrp)), sinr:sn.length ? med(sn) : null, cell:cellLabel(got[got.length - 1]), ts:Date.now()});
+  db.spots = db.spots.slice(-20); save(); $('#spotName').value = ''; renderSpots();
+}
+function renderSpots(){
+  const el = $('#spots'); if (!el) return;
+  const list = [...db.spots].sort((a, b) => b.rsrp - a.rsrp);
+  el.innerHTML = list.length ? list.map((x, i) => `<div class="nb"><span>${i === 0 ? '<b>Best:</b> ' : ''}${esc(x.name)}</span><b class="${rsrpGrade(x.rsrp)[1]}">${Math.round(x.rsrp)} dBm</b></div>`).join('') + '<button class="btn sec" id="spotClear">Clear spots</button>' : '';
+  const c = $('#spotClear'); if (c) c.onclick = () => { db.spots = []; save(); renderSpots(); };
+}
+const SHORTCUTS = [
+  ['operator', 'Mobile network settings', 'Preferred network type and carrier selection. Switch automatic selection off and on to re-register.'],
+  ['airplane', 'Airplane mode panel', 'The quickest way to drop the tower and reconnect.'],
+  ['apn', 'APN settings', 'Reset to default if data behaves oddly after a SIM change.'],
+  ['data', 'Data usage and Data Saver', 'Turn Data Saver off if it is on.'],
+  ['wireless', 'Network and internet', 'Private DNS and VPN are usually under here.'],
+  ['radioinfo', 'Radio info menu', 'Hidden engineering menu. Many phones block it.']
+];
+function renderShortcuts(){
+  $('#shortcuts').innerHTML = SHORTCUTS.map(x => `<div class="sc"><button class="btn sec" data-k="${x[0]}">${x[1]}</button><p class="mute">${x[2]}</p></div>`).join('');
+}
+async function radioAllow(){
+  try { const r = await Radio.ensurePermissions(); radioState.ok = !!r.granted; } catch(e){ radioState.ok = false; }
+  const off = $('#radioOff');
+  if (!radioState.ok){
+    off.hidden = false;
+    off.innerHTML = 'Android needs location and phone permission to read tower data. Nothing is stored or sent anywhere. <button class="chip" id="radioAllow">Allow access</button>';
+    $('#radioAllow').onclick = radioAllow;
+  } else {
+    off.hidden = true;
+    document.querySelectorAll('.chips[data-k="net"],.chips[data-k="signal"]').forEach(e => e.parentElement.hidden = true);
+    radioPoll();
+  }
+}
+async function radioBoot(){
+  renderShortcuts(); renderSpots(); renderFlow(); renderRadioLog();
+  $('#flowSave').onclick = flowSave; $('#flowCmp').onclick = flowCompare; $('#spotBtn').onclick = measureSpot;
+  const open = k => Radio.openSettings({kind:k}).catch(() => alert('This phone blocked that screen. Open it from Settings instead.'));
+  $('#flowAir').onclick = () => open('airplane'); $('#flowOp').onclick = () => open('operator');
+  $('#shortcuts').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (b && Radio) open(b.dataset.k); });
+  if (!Radio){
+    const off = $('#radioOff'); off.hidden = false;
+    off.textContent = 'The live radio view needs the Android app. In a browser, the Test, Watch and Compare tabs still work.';
+    $('#radioLive').innerHTML = ''; return;
+  }
+  await radioAllow();
+  setInterval(() => { if (!document.hidden) radioPoll(); }, 2000);
+}
+
+/* ---------- tools (needs Shizuku, Android app only) ---------- */
+const Tools = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Tools;
+const sz = {state:'unknown', uid:null, blocked:false};
+const szReady = () => !!Tools && sz.state === 'ready';
+let toolBusy = false, ntSlot = 0;
+
+const errText = e => {
+  const m = String((e && (e.message || e.errorMessage)) || e || 'unknown error');
+  return m === 'not-ready' ? 'Shizuku is not connected' : m;
+};
+async function tool(name, args){
+  try { return await Tools[name](args || {}); }
+  catch(e){ szRefresh(); throw e; }
+}
+async function guarded(btn, out, fn){
+  if (!szReady() || toolBusy) return;
+  if (busy){ if (out) out.textContent = 'Wait for the test or watch to finish first.'; return; }
+  toolBusy = true; btn.disabled = true;
+  try { await fn(); }
+  catch(e){ if (out) out.textContent = 'That did not work: ' + errText(e) + '.'; }
+  finally { toolBusy = false; btn.disabled = false; }
+}
+
+/* --- Shizuku connection --- */
+async function szRefresh(){
+  const was = sz.state;
+  if (!Tools){ sz.state = 'nonative'; renderSz(); return; }
+  try {
+    const s = await Tools.status();
+    sz.uid = s.uid != null ? s.uid : null; sz.blocked = !!s.blocked;
+    sz.state = s.preV11 ? 'old' : (!s.installed && !s.running) ? 'missing' : !s.running ? 'stopped' : !s.granted ? 'denied' : 'ready';
+  } catch(e){ sz.state = 'unknown'; }
+  renderSz();
+  if (sz.state === 'ready' && was !== 'ready'){ dnsRefresh(); ntRefresh(); }
+}
+function renderSz(){
+  const box = $('#szStatus'), body = $('#szBody'); if (!box) return;
+  const S = {
+    nonative:['The phone controls need the Android app. They do not work in a browser.', null],
+    unknown:['Could not reach Shizuku yet.', ['Check again', 'check']],
+    missing:['Shizuku is not installed. It lets Pulse Check run phone controls without root. Install it, start it from its own screen, then come back.', ['Get Shizuku', 'open']],
+    stopped:['Shizuku is installed but not running. Open it and tap Start (Wireless debugging works on Android 11 and later), then come back.', ['Open Shizuku', 'open']],
+    denied:[sz.blocked ? 'Shizuku has blocked Pulse Check. Open Shizuku, go to Authorized apps and allow Pulse Check.' : 'Shizuku is running. Allow Pulse Check to use it.', sz.blocked ? ['Open Shizuku', 'open'] : ['Allow in Shizuku', 'allow']],
+    old:['This version of Shizuku is too old. Update the Shizuku app.', ['Open Shizuku', 'open']],
+    ready:[`Shizuku connected${sz.uid === 0 ? ' (root)' : sz.uid === 2000 ? ' (ADB)' : ''}.`, null]
+  };
+  const [msg, act] = S[sz.state] || S.unknown;
+  box.innerHTML = sz.state === 'ready'
+    ? `<p class="good"><b>${esc(msg)}</b></p>`
+    : `<div class="banner">${esc(msg)}${act ? ` <button class="chip" id="szAct" data-a="${act[1]}">${act[0]}</button>` : ''}</div>`;
+  body.hidden = sz.state !== 'ready';
+}
+async function szAct(e){
+  const b = e.target.closest('#szAct'); if (!b || !Tools) return;
+  const a = b.dataset.a;
+  if (a === 'check') return szRefresh();
+  if (a === 'open'){ try { await Tools.openShizuku(); } catch(x){ alert('Could not open Shizuku. Open it from your app list.'); } return; }
+  if (a === 'allow'){
+    try { await Tools.requestPermission(); } catch(x){ await szRefresh(); return; }
+    for (let i = 0; i < 30 && sz.state !== 'ready'; i++){ await sleep(1000); await szRefresh(); if (sz.blocked) break; }
+  }
+}
+function toolsOpen(){ szRefresh().then(() => { if (szReady()){ dnsRefresh(); ntRefresh(); } }); }
+
+/* --- reconnect --- */
+async function reconnect(){
+  const out = $('#tReconnectOut');
+  out.textContent = 'Reading your current tower...';
+  await radioPoll();
+  const before = primary(radioState.last);
+  out.textContent = 'Airplane mode is on. It switches off by itself in about 6 seconds.';
+  const r = await tool('airplaneCycle', {seconds:6});
+  if (!r.ok){
+    out.textContent = r.stuck ? 'Airplane mode may still be on. Switch it off in Quick Settings.' : ('The phone did not accept the airplane mode command. ' + (r.detail || ''));
+    return;
+  }
+  out.textContent = 'Waiting for the network to come back...';
+  let after = null; const t0 = Date.now();
+  while (Date.now() - t0 < 60000){
+    await sleep(2000); await radioPoll();
+    const p = primary(radioState.last);
+    if (p){ after = p; break; }
+  }
+  if (!after){ out.textContent = 'No tower after 60 seconds. Check that airplane mode is off and Allow access is on in the Radio tab.'; return; }
+  await sleep(3000); await radioPoll();
+  after = primary(radioState.last) || after;
+  let text;
+  if (!before) text = `Reconnected on ${cellLabel(after)}. There was no earlier reading to compare with.`;
+  else {
+    const d = after.rsrp != null && before.rsrp != null ? after.rsrp - before.rsrp : null;
+    const sig = d == null ? '' : ` Signal ${before.rsrp} to ${after.rsrp} dBm (${d >= 0 ? '+' : ''}${d} dB).`;
+    text = rKey(after) === rKey(before)
+      ? `Same tower again: ${cellLabel(after)}.${sig}`
+      : `New tower: ${cellLabel(before)} to ${cellLabel(after)}.${sig}`;
+  }
+  out.textContent = text + ' Run the Test tab to see if it is steadier.';
+  logRadio('tool', 'Reconnect: ' + text);
+}
+async function dataCycle(){
+  const out = $('#tDataOut');
+  out.textContent = 'Mobile data is off for 3 seconds...';
+  const r = await tool('dataCycle', {seconds:3});
+  out.textContent = r.ok ? 'Mobile data was switched off and on. Give it a few seconds, then run a test.' : 'The phone did not accept the command.';
+  if (r.ok) logRadio('tool', 'Mobile data switched off and on');
+}
+
+/* --- private DNS --- */
+const DNS_PRESETS = [['cloudflare', 'Cloudflare 1.1.1.1'], ['google', 'Google 8.8.8.8'], ['auto', 'Automatic'], ['off', 'Off']];
+function dnsPresetOf(d){
+  if (!d) return null;
+  if (d.mode === 'hostname') return d.host === 'one.one.one.one' ? 'cloudflare' : d.host === 'dns.google' ? 'google' : null;
+  if (!d.mode || d.mode === 'opportunistic') return 'auto';
+  return d.mode === 'off' ? 'off' : null;
+}
+function dnsName(d){
+  const p = dnsPresetOf(d);
+  if (p) return DNS_PRESETS.find(x => x[0] === p)[1];
+  return d && d.mode === 'hostname' ? (d.host || 'custom hostname') : (d && d.mode) || 'not set';
+}
+async function dnsRefresh(){
+  try {
+    const d = await tool('getDns'), p = dnsPresetOf(d);
+    $('#dnsNow').innerHTML = `Now: <b>${esc(dnsName(d))}</b>`;
+    [...$('#dnsChips').children].forEach(c => c.setAttribute('aria-pressed', String(c.dataset.p === p)));
+  } catch(e){ $('#dnsNow').textContent = 'Could not read the current setting.'; }
+}
+async function dnsApply(preset){
+  const r = await tool('setDns', {preset});
+  if (!r.ok) throw new Error('the phone did not accept the DNS change');
+  logRadio('tool', 'Private DNS set to ' + (DNS_PRESETS.find(x => x[0] === preset) || [0, preset])[1]);
+  return r;
+}
+
+/* --- lock to 4G --- */
+const NT_MSG = {
+  locked:'Locked. 5G is off for this SIM, so it cannot flip between 5G and 4G. Tap Restore to switch it back on.',
+  already:'The phone already has 5G off for this SIM.',
+  unreadable:'Could not read the current setting on this phone, so nothing was changed.',
+  ignored:'This phone ignored the command, so the original setting was put back. Use the Mobile network settings shortcut in the Radio tab instead.',
+  restored:'Restored. 5G is allowed again.',
+  'nothing-saved':'There is no saved setting to restore.'
+};
+async function ntRefresh(){
+  const el = $('#ntNow'), lock = $('#ntLock'), res = $('#ntRestore');
+  try {
+    const r = await tool('netTypeGet', {slot:ntSlot});
+    res.disabled = !r.saved;
+    if (!r.readable){
+      el.textContent = 'This phone does not let apps read the network type setting, so Pulse Check will not change it. Use the Mobile network settings shortcut in the Radio tab instead.';
+      lock.disabled = true; return;
+    }
+    el.textContent = r.hasNr ? '5G is allowed on this SIM.' : '5G is switched off on this SIM (4G and older only).';
+    lock.disabled = !r.hasNr;
+  } catch(e){ el.textContent = 'Could not read the setting.'; lock.disabled = true; res.disabled = true; }
+}
+async function ntLock(){
+  const out = $('#ntOut'), r = await tool('netTypeLock', {slot:ntSlot});
+  out.textContent = NT_MSG[r.reason] || 'Done.';
+  if (r.ok && r.reason === 'locked') logRadio('tool', 'Locked to 4G (5G off)');
+}
+async function ntRestore(){
+  const out = $('#ntOut'), r = await tool('netTypeRestore', {slot:ntSlot});
+  out.textContent = NT_MSG[r.reason] || 'Done.';
+  if (r.ok) logRadio('tool', 'Network type restored');
+}
+
+/* --- modem report --- */
+function parseModem(raw){
+  raw = raw || '';
+  const uniq = a => [...new Set(a)];
+  const val = (s, re) => { const m = s.match(re); return m ? m[1] : null; };
+  const chans = uniq(raw.match(/\{[^{}]*(?:mCellConnectionStatus|mConnectionStatus)[^{}]*\}/g) || []).map(s => ({
+    status:val(s, /(?:mCellConnectionStatus|mConnectionStatus)=(\w+)/),
+    rat:val(s, /(?:mRat|mNetworkType)=(\w+)/),
+    band:val(s, /mBand=(\d+)/),
+    bwKhz:+val(s, /mCellBandwidthDownlinkKhz=(\d+)/) || null
+  }));
+  const ca = uniq([...raw.matchAll(/isUsingCarrierAggregation\s*=\s*(true|false)/g)].map(m => m[1]));
+  const nr = uniq([...raw.matchAll(/nrState\s*=\s*(\w+)/g)].map(m => m[1]));
+  const bws = [...raw.matchAll(/mCellBandwidths\s*=\s*\[([^\]]*)\]/g)].map(m => m[1].split(',').map(x => +x.trim()).filter(x => x > 0)).find(a => a.length) || [];
+  return {chans, ca, nr, bws};
+}
+function modemRows(rep){
+  const rows = [];
+  const nrMap = {CONNECTED:'5G is active', NOT_RESTRICTED:'5G is available but not in use', RESTRICTED:'5G is available but restricted', NONE:'No 5G on this connection'};
+  if (rep.nr.length) rows.push(['5G state', rep.nr.map(x => nrMap[x] || x).join(', ')]);
+  const serving = rep.chans.filter(c => /primary|secondary/i.test(c.status || ''));
+  const list = serving.length ? serving : rep.chans;
+  const caOn = serving.length > 1 || rep.ca.includes('true');
+  if (rep.chans.length || rep.ca.length) rows.push(['Carrier aggregation', caOn ? 'Active' + (serving.length > 1 ? `, ${serving.length} channels combined` : '') : 'Not active']);
+  const khz = serving.length ? serving.reduce((a, c) => a + (c.bwKhz || 0), 0) : rep.bws.reduce((a, b) => a + b, 0);
+  if (khz > 0) rows.push(['Total channel width', Math.round(khz / 1000) + ' MHz']);
+  list.forEach(c => {
+    const role = /primary/i.test(c.status || '') ? 'Main channel' : /secondary/i.test(c.status || '') ? 'Added channel' : 'Channel';
+    const band = c.band ? ' ' + (c.rat === 'NR' ? 'n' : 'B') + c.band : '';
+    rows.push([`${role}: ${c.rat || '?'}${band}`, c.bwKhz ? Math.round(c.bwKhz / 1000) + ' MHz' : 'width not reported']);
+  });
+  if (!serving.length && rep.bws.length) rep.bws.forEach((w, i) => rows.push([`Channel ${i + 1} width`, Math.round(w / 1000) + ' MHz']));
+  return rows;
+}
+async function modemRun(){
+  const out = $('#modemOut');
+  out.innerHTML = '<p class="mute">Reading the modem report...</p>';
+  const r = await tool('modem');
+  const rows = modemRows(parseModem(r.out));
+  out.innerHTML = (rows.length
+    ? `<dl class="kv">${rows.map(x => `<dt>${esc(x[0])}</dt><dd>${esc(x[1])}</dd>`).join('')}</dl>`
+    : '<p class="mute">This phone did not report modem details. Many phones hide them from the shell.</p>')
+    + (r.out ? `<details><summary>Raw lines</summary><pre class="raw">${esc(r.out.slice(0, 4000))}</pre></details>` : '');
+}
+
+/* --- real ping and route --- */
+function parsePing(text, n){
+  const t = [...String(text || '').matchAll(/time[=<]\s*([\d.]+)\s*ms/g)].map(m => +m[1]);
+  return stats(t, n);
+}
+async function icmpBoth(n = 10){
+  const [a, b] = await Promise.all([tool('ping', {host:'1.1.1.1', count:n}), tool('ping', {host:'8.8.8.8', count:n})]);
+  const cf = parsePing(a.out, n), gg = parsePing(b.out, n);
+  const ran = /transmitted|packets/i.test((a.out || '') + (b.out || ''));
+  if (!cf.n && !gg.n && !ran) throw new Error((a.err || a.out || a.fail || 'ping did not run').slice(0, 120));
+  return {cf, gg};
+}
+function parseRoute(text){
+  const hops = [];
+  String(text || '').split(/^HOP /m).slice(1).forEach(b => {
+    const m = b.match(/[Ff]rom\s+(\d{1,3}(?:\.\d{1,3}){3})/);
+    hops.push({n:+b.split('\n')[0], ip:m ? m[1] : null, reached:/bytes from/.test(b)});
+  });
+  return hops;
+}
+function ipKind(ip){
+  if (!ip) return '';
+  if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)) return 'private, inside your carrier network';
+  if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(ip)) return 'carrier-grade NAT';
+  return 'public';
+}
+function pingTable(res){
+  const row = (name, s) => `<tr><td>${name}</td><td>${fmt(s.med)}</td><td class="${s.loss >= 3 ? 'bad' : s.loss >= 1 ? 'warn' : 'good'}">${s.loss.toFixed(0)}%</td><td>${fmt(s.jit)}</td></tr>`;
+  return `<table><tr><th>Target</th><th>Median</th><th>Lost</th><th>Jitter</th></tr>${row('1.1.1.1', res.cf)}${row('8.8.8.8', res.gg)}</table>`;
+}
+function hopsHtml(hops){
+  if (!hops.length) return '<p class="mute">The route trace gave no result on this phone.</p>';
+  return '<h3>First hops</h3>' + hops.map(h => `<div class="nb"><span>Hop ${h.n}${h.ip ? ' · ' + esc(ipKind(h.ip)) : ''}</span><b>${h.ip ? esc(h.ip) : 'no reply'}${h.reached ? ' (target)' : ''}</b></div>`).join('')
+    + '<p class="mute" style="margin-top:8px">Silent hops are normal. Carriers often block these replies. The first private address is usually your carrier\'s gateway.</p>';
+}
+async function pingTool(){
+  const out = $('#pingOut');
+  out.innerHTML = '<p class="mute">Pinging 1.1.1.1 and 8.8.8.8, about 10 seconds...</p>';
+  const res = await icmpBoth(10);
+  out.innerHTML = pingTable(res) + '<p class="mute">Tracing the first hops...</p>';
+  const r = await tool('route', {host:'1.1.1.1'});
+  out.innerHTML = pingTable(res) + hopsHtml(parseRoute(r.out));
+}
+
+/* --- wiring --- */
+function toolsBoot(){
+  $('#szStatus').addEventListener('click', szAct);
+  $('#tReconnect').onclick = e => guarded(e.currentTarget, $('#tReconnectOut'), reconnect);
+  $('#tData').onclick = e => guarded(e.currentTarget, $('#tDataOut'), dataCycle);
+  $('#dnsChips').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    const out = $('#dnsOut');
+    guarded(b, out, async () => {
+      await dnsApply(b.dataset.p);
+      out.textContent = `Private DNS set to ${DNS_PRESETS.find(x => x[0] === b.dataset.p)[1]}. Run the Test tab again to compare.`;
+    }).then(dnsRefresh);
+  });
+  $('#ntSlot').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    ntSlot = +b.dataset.s; [...$('#ntSlot').children].forEach(c => c.setAttribute('aria-pressed', String(c === b)));
+    $('#ntOut').textContent = ''; if (szReady()) ntRefresh();
+  });
+  $('#ntLock').onclick = e => guarded(e.currentTarget, $('#ntOut'), ntLock).then(ntRefresh);
+  $('#ntRestore').onclick = e => guarded(e.currentTarget, $('#ntOut'), ntRestore).then(ntRefresh);
+  $('#tModem').onclick = e => guarded(e.currentTarget, $('#modemOut'), modemRun);
+  $('#tPing').onclick = e => guarded(e.currentTarget, $('#pingOut'), pingTool);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Tools) szRefresh(); });
+  szRefresh();
+}
+
+/* ---------- main test ---------- */
+async function runTest(){
+  if (busy) return;
+  if (toolBusy){ alert('A phone control is still running. Wait for it to finish.'); return; }
+  busy = true;
+  $('#runBtn').disabled = true; $('#results').hidden = true;
+  trace = []; buildStages();
+  const cfg = mode === 'full' ? FULL : LIGHT;
+  const m = {id:Date.now(), ts:Date.now(), mode:cfg.name, ctx:{...conn(), ...manual}};
+  const rT0 = Date.now(); keepAwake(true);
+  await sleep(400);
+  try {
+    setStage(0, 'ok', [m.ctx.type, m.ctx.eff].filter(Boolean).join(' · ') || 'browser did not report');
+    setStage(1, 'run'); m.cf = stats(await pingRun(CF, 30, 1)); setStage(1, 'ok', `${fmt(m.cf.med)} · ${m.cf.loss.toFixed(0)}% lost`);
+    setStage(2, 'run'); m.gg = stats(await pingRun(GG, 30, 2)); setStage(2, 'ok', `${fmt(m.gg.med)} · ${m.gg.loss.toFixed(0)}% lost`);
+    setStage(3, 'run', 'carrier DNS');
+    m.dns = {sys: await dnsSystem()};
+    setStage(3, 'run', '1.1.1.1'); m.dns.cf = await dnsDoH('cf');
+    setStage(3, 'run', '8.8.8.8'); m.dns.gg = await dnsDoH('gg');
+    setStage(3, 'ok', `${fmt(m.dns.sys)} carrier`);
+    setStage(4, 'run'); const d = await loaded('down', cfg.dl, 4); m.down = d.speed.mbps; m.loadDown = d.lat; m.downMB = d.speed.mb;
+    setStage(4, 'ok', `${m.down.toFixed(1)} Mbps`);
+    setStage(5, 'run'); const u = await loaded('up', cfg.ul, 5); m.up = u.speed.mbps; m.loadUp = u.lat; m.upMB = u.speed.mb;
+    setStage(5, 'ok', `${m.up.toFixed(1)} Mbps`);
+    if (ICMP >= 0){
+      setStage(ICMP, 'run', '2 x 10 pings'); await sleep(1500);
+      try { m.icmp = await icmpBoth(10); setStage(ICMP, 'ok', `${fmt(m.icmp.cf.med)} · ${m.icmp.cf.loss.toFixed(0)}% lost`); }
+      catch(e){ setStage(ICMP, 'err', 'unavailable'); }
+    }
+    setStage(ANI, 'run');
+    const base = m.gg.med ?? m.cf.med;
+    const worst = Math.max(m.loadDown.med || 0, m.loadUp.med || 0);
+    m.bloat = base != null && worst ? Math.max(0, worst - base) : null;
+    m.rpm = worst ? 60000 / worst : null;
+    m.radio = radioSummary(rT0);
+    if (m.radio){ if (m.radio.netShort) m.ctx.net = m.radio.netShort; if (m.radio.signal) m.ctx.signal = m.radio.signal; }
+    m.watch = lastWatch;
+    m.find = diagnose(m);
+    setStage(ANI, 'ok', 'done');
+    db.runs.unshift(m); db.runs = db.runs.slice(0, 12); db.lastId = m.id; save();
+    showResults(m); renderCompare();
+  } catch(err){
+    console.error(err); setStage(ANI, 'err', 'failed');
+    alert('The test stopped: ' + (err && err.message || err) + '. Check that mobile data is on, then run again.');
+  }
+  busy = false; keepAwake(false); $('#runBtn').disabled = false;
+}
+
+/* ---------- diagnosis ---------- */
+const F = {
+  air:['phone','Turn airplane mode on for 15 seconds, then off. This forces a fresh tower connection. Re-test.'],
+  mode:['phone','Try another network type: Settings > Network & internet > SIMs > your SIM > Preferred network type. If the phone flips between 5G and 4G, lock it to 4G (LTE). Samsung: Settings > Connections > Mobile networks > Network mode.'],
+  move:['phone','Re-test next to a window or outdoors. Walls and metal can cut signal strength sharply.'],
+  apn:['phone','Reset APN: Settings > Network & internet > SIMs > Access point names > menu > Reset to default.'],
+  dns:['phone','Set Private DNS: Settings > Network & internet > Private DNS > hostname, then enter one.one.one.one (or dns.google). Samsung: Settings > Connections > More connection settings > Private DNS.'],
+  dnsSet:['action','setdns'],
+  vpn:['phone','Turn the VPN off and re-test.'],
+  bg:['phone','Pause cloud backup, photo sync and app updates while testing. Play Store > profile > Settings > Network preferences > Auto-update apps > Over Wi-Fi only.'],
+  save:['phone','Turn off Data Saver: Settings > Network & internet > Data Saver.'],
+  wifi:['phone','Turn Wi-Fi off before testing so the result measures mobile data.'],
+  sim:['carrier','Ask for a SIM or eSIM swap and a line check on your number. Send the summary from the Compare tab.'],
+  cong:['carrier','Ask if your cell is congested or has an outage at your address, and which bands your plan can use.'],
+  thr:['carrier','Check the carrier app for a fair-use or throttling notice. Speeds are often capped after a limit.'],
+  tower:['phone','Force a fresh tower connection: Radio tab, then Force a new tower. Apps cannot pick a tower, but switching airplane mode or reselecting the carrier makes the network choose again.'],
+  watch:['phone','Run the Watch tab for 5 to 10 minutes at the time it usually fails.']
+};
+function diagnose(m){
+  const out = []; const add = (impact, title, why, fixes) => out.push({impact, title, why, fixes});
+  const loss = Math.max(m.cf.loss || 0, m.gg.loss || 0);
+  const base = m.cf.n && m.gg.n ? Math.min(m.cf.med, m.gg.med) : (m.cf.med ?? m.gg.med);
+  const jit = Math.max(m.cf.jit || 0, m.gg.jit || 0);
+  const spikeRate = Math.max(m.cf.spikeRate || 0, m.gg.spikeRate || 0);
+  const weak = m.ctx.signal === 'Weak';
+  if (m.ctx.type === 'wifi') add(90, 'This run was on Wi-Fi', 'The browser reports a Wi-Fi connection, so these numbers are not about mobile data.', [F.wifi]);
+  if (loss >= 10) add(weak ? 98 : 95, 'Heavy packet loss', `${loss.toFixed(1)}% of probes got no reply (Cloudflare ${m.cf.loss.toFixed(0)}%, Google ${m.gg.loss.toFixed(0)}%). The radio link is dropping data.`, [F.air, F.mode, F.move, F.apn, F.sim, F.cong]);
+  else if (loss >= 3) add(weak ? 88 : 80, 'Packet loss on the radio link', `${loss.toFixed(1)}% of probes got no reply. Healthy mobile data should lose under 1%.`, [F.air, F.mode, F.move, F.sim, F.cong]);
+  else if (loss >= 1) add(45, 'Occasional packet loss', `${loss.toFixed(1)}% of probes were lost. Minor, but it matches the on-and-off feeling.`, [F.mode, F.watch]);
+  if (base != null){
+    if (base >= 150) add(85, 'Very high idle latency', `Best-path median is ${Math.round(base)} ms. 4G and 5G are usually 25 to 70 ms.`, [F.mode, F.air, F.apn, F.cong]);
+    else if (base >= 90) add(60, 'High idle latency', `Median ${Math.round(base)} ms is above the usual 25 to 70 ms. Likely weak signal or a busy tower.`, [F.move, F.mode, F.cong]);
+  }
+  if (jit >= 40) add(72, 'Unstable timing (jitter)', `Replies vary by ${Math.round(jit)} ms on average. Calls, video and games will stutter.`, [F.mode, F.move, F.cong]);
+  else if (jit >= 20) add(46, 'Noticeable jitter', `Replies vary by ${Math.round(jit)} ms on average.`, [F.mode, F.move]);
+  if (spikeRate >= 5) add(56, 'Latency spikes', `${spikeRate.toFixed(0)}% of replies took 3 times longer than normal. That feels like short freezes.`, [F.air, F.mode, F.watch]);
+  if (m.bloat != null){
+    if (m.bloat >= 400) add(80, 'Severe bufferbloat', `Under load, replies took ${Math.round(m.bloat)} ms longer. Any upload or download freezes everything else.`, [F.bg, F.cong]);
+    else if (m.bloat >= 150) add(60, 'Bufferbloat', `Under load, replies took ${Math.round(m.bloat)} ms longer than idle.`, [F.bg, F.cong]);
+    else if (m.bloat >= 60) add(30, 'Mild bufferbloat', `Under load, replies took ${Math.round(m.bloat)} ms longer than idle.`, [F.bg]);
+  }
+  const sys = m.dns.sys, best = Math.min(m.dns.cf ?? 1e9, m.dns.gg ?? 1e9);
+  if (sys != null && sys >= 100 && best < 1e9 && sys > best + 60) add(52, 'Carrier DNS is slow', `Estimated lookup ${Math.round(sys)} ms, against ${Math.round(best)} ms on the fastest public resolver. Pages stall before they start loading.`, [F.dns, ...(szReady() ? [F.dnsSet] : [])]);
+  if (m.down < 2) add(82, 'Very low download speed', `${m.down.toFixed(1)} Mbps down.`, [F.move, F.mode, F.thr, F.cong]);
+  else if (m.down < 8) add(55, 'Low download speed', `${m.down.toFixed(1)} Mbps down. Fine for chat, slow for video.`, [F.mode, F.thr, F.cong]);
+  if (m.up < 1) add(62, 'Very weak upload', `${m.up.toFixed(1)} Mbps up. Your phone is struggling to reach the tower.`, [F.move, F.mode, F.sim]);
+  else if (m.up < 3 && m.down / Math.max(m.up, .1) > 15) add(40, 'Uplink much weaker than downlink', `${m.up.toFixed(1)} Mbps up against ${m.down.toFixed(1)} Mbps down. A sign of weak signal at the phone.`, [F.move]);
+  if (m.cf.n && m.gg.n && Math.abs(m.cf.med - m.gg.med) > 60) add(35, 'One route is much slower', `Cloudflare ${Math.round(m.cf.med)} ms against Google ${Math.round(m.gg.med)} ms. The carrier's route to some services is poor.`, [F.sim]);
+  if (['slow-2g', '2g', '3g'].includes(m.ctx.eff)) add(75, 'Phone reports a 3G-class connection', `The browser estimates "${m.ctx.eff}" quality.`, [F.mode, F.move]);
+  if (m.ctx.vpn === 'On') add(50, 'VPN is on', 'A VPN adds a detour and can reset on every network change.', [F.vpn]);
+  if (m.ctx.save) add(40, 'Data Saver is on', 'Android may restrict background traffic and reconnect apps often.', [F.save]);
+  if (m.ctx.net === '5G' && (loss >= 1 || jit >= 20)) add(58, '5G may be flipping to 4G', 'On 5G with loss or jitter, the phone often hops between 5G and 4G, which breaks connections.', [F.mode]);
+  const I = m.icmp;
+  if (I){
+    const il = Math.max(I.cf.loss || 0, I.gg.loss || 0);
+    const ib = I.cf.n && I.gg.n ? Math.min(I.cf.med, I.gg.med) : (I.cf.med ?? I.gg.med);
+    if (il >= 10) add(93, 'Real pings are being dropped', `${il.toFixed(0)}% of ICMP pings got no reply (1.1.1.1 ${I.cf.loss.toFixed(0)}%, 8.8.8.8 ${I.gg.loss.toFixed(0)}%). This is below the web layer, so the radio link or the carrier network is losing packets.`, [F.air, F.mode, F.move, F.sim, F.cong]);
+    else if (il >= 3) add(79, 'Real pings show packet loss', `${il.toFixed(1)}% of ICMP pings got no reply. Healthy mobile data loses under 1%.`, [F.air, F.mode, F.move, F.cong]);
+    else if (loss >= 3) add(66, 'The radio link is fine, web traffic is not', `Real pings were clean (${il.toFixed(1)}% lost) but ${loss.toFixed(1)}% of web probes failed. DNS, a carrier proxy or the route to those sites is a likelier cause than signal.`, [F.dns, F.vpn, F.sim]);
+    if (ib != null && base != null && base - ib >= 100) add(44, 'Web replies are much slower than raw pings', `A raw ping takes ${Math.round(ib)} ms, but a web probe takes ${Math.round(base)} ms. The extra time goes to DNS, connection setup or a carrier proxy.`, [F.dns, F.vpn, F.sim]);
+  }
+  const R = m.radio;
+  if (R){
+    if (R.rsrp != null && R.rsrp <= -110) add(90, 'Very weak cell signal', `Signal is ${Math.round(R.rsrp)} dBm (RSRP). Below -110 dBm, data stalls and drops.`, [F.move, F.tower, F.mode, F.sim]);
+    else if (R.rsrp != null && R.rsrp <= -100) add(66, 'Weak cell signal', `Signal is ${Math.round(R.rsrp)} dBm (RSRP). Above -90 dBm is comfortable.`, [F.move, F.tower, F.mode]);
+    if (R.sinr != null && R.sinr < 0) add(72, 'Noisy radio link', `SINR is ${Math.round(R.sinr)} dB. Interference or a crowded cell hurts speed even when the bars look fine.`, [F.tower, F.mode, F.cong]);
+    if (R.nbDelta != null && R.nbDelta >= 8) add(76, 'Phone may be stuck on a weaker tower', `A nearby cell is ${Math.round(R.nbDelta)} dB stronger than the one in use. Force a new connection.`, [F.tower, F.air, F.mode]);
+    if (R.cellChanges >= 4) add(82, 'Phone keeps switching towers', `${R.cellChanges} tower changes during this test. Bouncing between cells breaks connections.`, [F.mode, F.tower, F.cong, F.sim]);
+    else if (R.cellChanges >= 2) add(55, 'Several tower changes', `${R.cellChanges} tower changes during the test.`, [F.mode, F.tower]);
+    if (R.netChanges >= 2) add(70, 'Network type flipped during the test', `The phone changed network type ${R.netChanges} times (for example 5G and 4G).`, [F.mode]);
+    if (R.netShort === '3G' || R.netShort === '2G') add(78, `Phone is on ${R.netShort}`, `Connected as ${R.net}. That is far too slow for normal use.`, [F.mode, F.move]);
+  }
+  const w = lastWatch;
+  if (w){
+    if (w.outages.length >= 3) add(86, `${w.outages.length} dropouts in a watch run`, `Longest ${w.longest.toFixed(0)} s. Repeated multi-second outages usually mean coverage gaps or failed handovers between towers.`, [F.mode, F.air, F.sim, F.cong]);
+    else if (w.outages.length >= 1) add(60, `${w.outages.length} dropout in a watch run`, `Longest ${w.longest.toFixed(0)} s.`, [F.mode, F.air, F.sim]);
+    if (w.tower >= 3) add(80, 'Phone bounced between towers while watching', `${w.tower} tower changes were logged.`, [F.mode, F.tower, F.cong]);
+    if (w.changes >= 2) add(70, 'Network type kept changing', `${w.changes} network changes were logged while watching.`, [F.mode]);
+  }
+  if (!out.length) add(0, 'No clear fault right now', 'This test ran while things were healthy. Mobile problems often come and go.', [F.watch]);
+  out.sort((a, b) => b.impact - a.impact);
+  return out.slice(0, 5);
+}
+
+/* ---------- results ---------- */
+const fmt = v => v == null ? '—' : Math.round(v) + ' ms';
+const mb = v => v == null ? '—' : v.toFixed(1) + ' Mbps';
+function sev(i){ return i >= 70 ? 'bad' : i >= 45 ? 'warn' : 'good'; }
+function ledger(m){
+  const c = (v, w, b) => v == null ? '' : v >= b ? 'bad' : v >= w ? 'warn' : 'good';
+  const rows = [
+    ['Reply time, Cloudflare', `${fmt(m.cf.med)}`, c(m.cf.med, 90, 150)],
+    ['Reply time, Google', `${fmt(m.gg.med)}`, c(m.gg.med, 90, 150)],
+    ['Slowest 5% of replies', fmt(Math.max(m.cf.p95 || 0, m.gg.p95 || 0) || null), ''],
+    ['Jitter', fmt(Math.max(m.cf.jit || 0, m.gg.jit || 0)), c(Math.max(m.cf.jit || 0, m.gg.jit || 0), 20, 40)],
+    ['Lost probes', `${Math.max(m.cf.loss || 0, m.gg.loss || 0).toFixed(1)}%`, c(Math.max(m.cf.loss || 0, m.gg.loss || 0), 1, 3)],
+    ['DNS, your carrier (estimate)', fmt(m.dns.sys), c(m.dns.sys, 80, 150)],
+    ['DNS, 1.1.1.1', fmt(m.dns.cf), ''],
+    ['DNS, 8.8.8.8', fmt(m.dns.gg), ''],
+    ['Download', mb(m.down), m.down < 2 ? 'bad' : m.down < 8 ? 'warn' : 'good'],
+    ['Upload', mb(m.up), m.up < 1 ? 'bad' : m.up < 3 ? 'warn' : 'good'],
+    ['Reply time while downloading', fmt(m.loadDown && m.loadDown.med), ''],
+    ['Reply time while uploading', fmt(m.loadUp && m.loadUp.med), ''],
+    ['Bufferbloat added', fmt(m.bloat), c(m.bloat, 60, 150)],
+    ['Responsiveness', m.rpm ? Math.round(m.rpm) + ' per min' : '—', ''],
+    ['Data used', `${((m.downMB || 0) + (m.upMB || 0)).toFixed(0)} MB`, '']
+  ];
+  if (m.icmp){
+    const ic = (n, x) => [`Real ping (ICMP), ${n}`, `${fmt(x.med)} · ${x.loss.toFixed(0)}% lost`, c(x.med, 90, 150)];
+    rows.splice(2, 0, ic('1.1.1.1', m.icmp.cf), ic('8.8.8.8', m.icmp.gg));
+  }
+  if (m.radio){
+    const r = m.radio;
+    rows.push(['Cell signal (RSRP)', r.rsrp == null ? '—' : `${Math.round(r.rsrp)} dBm, ${rsrpGrade(r.rsrp)[0]}`, rsrpGrade(r.rsrp)[1]],
+      ['Cell SINR', r.sinr == null ? '—' : `${Math.round(r.sinr)} dB, ${sinrGrade(r.sinr)[0]}`, sinrGrade(r.sinr)[1]],
+      ['Network and band', `${r.net || '?'} · ${r.band || '?'}`, ''],
+      ['Serving tower', r.cell || '—', ''],
+      ['Tower changes in test', String(r.cellChanges), r.cellChanges >= 4 ? 'bad' : r.cellChanges >= 2 ? 'warn' : 'good']);
+  }
+  return rows;
+}
+function showResults(m){
+  const top = m.find[0];
+  $('#verdict').textContent = top.impact === 0 ? 'Looks healthy right now' : top.title;
+  $('#verdictSub').textContent = top.impact === 0 ? top.why : 'This is the biggest problem in this run.';
+  $('#findings').innerHTML = m.find.map(f => {
+    const ph = f.fixes.filter(x => x[0] === 'phone'), ca = f.fixes.filter(x => x[0] === 'carrier'), ac = f.fixes.filter(x => x[0] === 'action');
+    return `<div class="find ${sev(f.impact)}"><h4>${esc(f.title)}</h4><p>${esc(f.why)}</p>${ac.length ? '<button class="btn sec" data-act="setdns">Set Private DNS for me</button><p class="mute" data-actout></p>' : ''}<details><summary>What to try</summary>
+      ${ph.length ? `<div class="tag">On your phone</div><ul>${ph.map(x => `<li>${esc(x[1])}</li>`).join('')}</ul>` : ''}
+      ${ca.length ? `<div class="tag">Carrier or SIM</div><ul>${ca.map(x => `<li>${esc(x[1])}</li>`).join('')}</ul>` : ''}
+      </details></div>`;
+  }).join('');
+  $('#ledger').innerHTML = ledger(m).map(r => `<tr><td>${r[0]}</td><td class="v ${r[2]}">${r[1]}</td></tr>`).join('');
+  $('#results').hidden = false;
+  $('#results').scrollIntoView({behavior:'smooth', block:'start'});
+}
+$('#findings').addEventListener('click', e => {
+  const b = e.target.closest('button[data-act="setdns"]'); if (!b) return;
+  const o = b.parentElement.querySelector('[data-actout]');
+  guarded(b, o, async () => {
+    const m = find(db.lastId) || db.runs[0], d = (m && m.dns) || {};
+    const preset = (d.gg == null || (d.cf != null && d.cf <= d.gg)) ? 'cloudflare' : 'google';
+    await dnsApply(preset);
+    o.textContent = `Private DNS is now ${preset === 'cloudflare' ? 'Cloudflare (one.one.one.one)' : 'Google (dns.google)'}. Run the test again, then compare in the Compare tab. You can undo this in the Tools tab.`;
+  });
+});
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- compare ---------- */
+const DEFS = [
+  ['Reply time, Cloudflare', m => m.cf.med, 'ms', 'low'],
+  ['Reply time, Google', m => m.gg.med, 'ms', 'low'],
+  ['Real ping (ICMP), 1.1.1.1', m => m.icmp && m.icmp.cf && m.icmp.cf.med, 'ms', 'low'],
+  ['Real ping loss (ICMP)', m => m.icmp && Math.max(m.icmp.cf.loss || 0, m.icmp.gg.loss || 0), '%', 'low'],
+  ['Jitter', m => Math.max(m.cf.jit || 0, m.gg.jit || 0), 'ms', 'low'],
+  ['Lost probes', m => Math.max(m.cf.loss || 0, m.gg.loss || 0), '%', 'low'],
+  ['DNS, carrier', m => m.dns.sys, 'ms', 'low'],
+  ['DNS, 1.1.1.1', m => m.dns.cf, 'ms', 'low'],
+  ['Download', m => m.down, 'Mbps', 'high'],
+  ['Upload', m => m.up, 'Mbps', 'high'],
+  ['Latency while downloading', m => m.loadDown && m.loadDown.med, 'ms', 'low'],
+  ['Latency while uploading', m => m.loadUp && m.loadUp.med, 'ms', 'low'],
+  ['Bufferbloat added', m => m.bloat, 'ms', 'low'],
+  ['Responsiveness', m => m.rpm, 'rpm', 'high'],
+  ['Cell signal (RSRP)', m => m.radio && m.radio.rsrp, 'dBm', 'high'],
+  ['Tower changes', m => m.radio && m.radio.cellChanges, '', 'low']
+];
+const find = id => db.runs.find(r => r.id === id);
+function when(ts){ return new Date(ts).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}); }
+function renderCompare(){
+  const b = find(db.before), a = find(db.after);
+  const n = (v, u) => v == null ? '—' : (u === '%' ? v.toFixed(1) : u === 'Mbps' ? v.toFixed(1) : Math.round(v));
+  if (b && a){
+    $('#cmpTable').innerHTML = `<table><tr><th></th><th>Before</th><th>After</th><th>Change</th></tr>` + DEFS.map(([l, g, u, dir]) => {
+      const x = g(b), y = g(a); let ch = '—', cls = '';
+      if (x != null && y != null){
+        const d = y - x; const pct = x ? d / Math.abs(x) * 100 : 0;
+        const better = dir === 'low' ? d < 0 : d > 0;
+        const flat = Math.abs(pct) < 8 || Math.abs(d) < (u === '%' ? .5 : u === '' ? 1 : 3);
+        cls = flat ? '' : better ? 'good' : 'bad';
+        ch = (d > 0 ? '+' : '') + (u === 'Mbps' || u === '%' ? d.toFixed(1) : Math.round(d)) + ' ' + u;
+      }
+      return `<tr><td>${l}</td><td>${n(x, u)}</td><td>${n(y, u)}</td><td class="${cls}"><b>${ch}</b></td></tr>`;
+    }).join('') + `</table><p class="mute" style="margin-top:8px">Before ${when(b.ts)}. After ${when(a.ts)}. Small differences are normal on mobile data, so run each twice when you can.</p>`;
+  } else $('#cmpTable').innerHTML = '<p class="mute">Run a test, tap Use as Before, apply a fix, run again, then tap Use as After.</p>';
+  $('#runs').innerHTML = db.runs.length ? db.runs.map(r => `<div class="runrow"><div class="info"><b>${when(r.ts)}</b><span class="mute">${Math.round(r.cf.med || 0)} ms · ${r.down.toFixed(1)} down · ${r.up.toFixed(1)} up · ${Math.max(r.cf.loss || 0, r.gg.loss || 0).toFixed(0)}% lost</span></div>
+    <button data-set="before" data-id="${r.id}" aria-pressed="${db.before === r.id}">Before</button>
+    <button data-set="after" data-id="${r.id}" aria-pressed="${db.after === r.id}">After</button></div>`).join('') : '<p class="mute">No runs yet.</p>';
+  const last = find(db.lastId) || db.runs[0];
+  $('#summary').value = last ? summaryText(last) : '';
+}
+function summaryText(m){
+  const L = ledger(m).map(r => `${r[0]}: ${r[1]}`).join('\n');
+  return `Mobile data test, ${when(m.ts)}\nConnection reported by phone: ${[m.ctx.type, m.ctx.eff, m.ctx.net, m.ctx.signal && 'signal ' + m.ctx.signal, m.ctx.place].filter(Boolean).join(', ') || 'unknown'}\n\n${L}\n\nMain issues found:\n${m.find.map(f => '- ' + f.title + ': ' + f.why).join('\n')}`;
+}
+$('#runs').addEventListener('click', e => {
+  const b = e.target.closest('button[data-set]'); if (!b) return;
+  db[b.dataset.set] = +b.dataset.id; save(); renderCompare();
+});
+$('#copyBtn').addEventListener('click', async () => {
+  const t = $('#summary'); t.select();
+  try { await navigator.clipboard.writeText(t.value); $('#copyBtn').textContent = 'Copied'; } catch(e){ document.execCommand && document.execCommand('copy'); $('#copyBtn').textContent = 'Copied'; }
+  setTimeout(() => $('#copyBtn').textContent = 'Copy summary', 1500);
+});
+$('#markBefore').onclick = () => { db.before = db.lastId; save(); renderCompare(); $('#markBefore').textContent = 'Saved as Before'; };
+$('#markAfter').onclick = () => { db.after = db.lastId; save(); renderCompare(); $('#markAfter').textContent = 'Saved as After'; };
+
+/* ---------- watch ---------- */
+let watchMin = 5, wakeLock = null;
+const wEvents = [];
+function wlog(t, s){ wEvents.push(`${t} ${s}`); $('#watchLog').innerHTML = wEvents.slice(-30).reverse().map(x => `<li>${esc(x)}</li>`).join(''); }
+const clock = s => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+async function startWatch(){
+  if (busy) return;
+  if (toolBusy){ alert('A phone control is still running. Wait for it to finish.'); return; }
+  busy = true; watching = true; trace = []; wEvents.length = 0; $('#watchLog').innerHTML = '';
+  $('#watchBtn').textContent = 'Stop'; $('#watchVerdict').textContent = '';
+  keepAwake(true); try { wakeLock = await navigator.wakeLock?.request('screen'); } catch(e){}
+  const t0 = performance.now(), W = {sent:0, lost:0, outages:[], longest:0, changes:0, spikes:0, lat:[], tower:0};
+  watchT0 = t0; const wStart = Date.now();
+  let run = 0, runStart = 0, i = 0;
+  const onChange = () => { W.changes++; const c = conn(); wlog(clock((performance.now() - t0) / 1000), `Network changed: ${[c.type, c.eff].filter(Boolean).join(' · ') || 'unknown'}`); };
+  const onOff = () => wlog(clock((performance.now() - t0) / 1000), 'Phone reported offline');
+  const onOn = () => wlog(clock((performance.now() - t0) / 1000), 'Phone reported online');
+  (navigator.connection || {}).addEventListener?.('change', onChange);
+  addEventListener('offline', onOff); addEventListener('online', onOn);
+  const refresh = el => {
+    $('#watchStats').innerHTML = [['Elapsed', clock(el)], ['Probes sent', W.sent], ['Lost', `${W.lost} (${W.sent ? (W.lost / W.sent * 100).toFixed(1) : 0}%)`], ['Outages of 3 s or more', W.outages.length], ['Longest outage', W.longest ? W.longest.toFixed(0) + ' s' : '—'], ['Network changes', W.changes], ['Tower changes', radioState.events.filter(e => e.kind === 'cell' && e.ts >= wStart).length]]
+      .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  };
+  await probe(GG); await probe(CF);
+  while (watching && (performance.now() - t0) < watchMin * 60000){
+    const el = (performance.now() - t0) / 1000;
+    const tg = i++ % 2 ? CF : GG;
+    const ms = await probe(tg, 2000); W.sent++; push(ms, 'watch');
+    if (ms == null){
+      W.lost++; if (run === 0) runStart = el; run++;
+      if (run === 3) wlog(clock(el), 'Outage started (3 probes in a row lost)');
+    } else {
+      W.lat.push(ms);
+      if (run >= 3){ const d = el - runStart; W.outages.push({at:runStart, dur:d}); W.longest = Math.max(W.longest, d); wlog(clock(el), `Back online after ${d.toFixed(0)} s`); }
+      run = 0;
+    }
+    refresh(el);
+    await sleep(Math.max(0, 1000 - (ms || 1000)));
+  }
+  const el = (performance.now() - t0) / 1000;
+  if (run >= 3){ const d = el - runStart; W.outages.push({at:runStart, dur:d}); W.longest = Math.max(W.longest, d); }
+  (navigator.connection || {}).removeEventListener?.('change', onChange);
+  removeEventListener('offline', onOff); removeEventListener('online', onOn);
+  keepAwake(false); try { await wakeLock?.release(); } catch(e){}
+  const s = stats(W.lat, W.sent); W.stats = s; W.tower = radioState.events.filter(e => e.kind === 'cell' && e.ts >= wStart).length; lastWatch = W;
+  refresh(el); watching = false; busy = false; $('#watchBtn').textContent = 'Start watching';
+  let v;
+  if (W.outages.length >= 3) v = `${W.outages.length} outages, longest ${W.longest.toFixed(0)} s. This points to coverage gaps or failed handovers between towers. Try locking the network type to 4G, then watch again.`;
+  else if (W.outages.length) v = `${W.outages.length} outage, ${W.longest.toFixed(0)} s. Run it again at the time it usually fails.`;
+  else if (W.lost / Math.max(W.sent, 1) > .02) v = `No long outages, but ${(W.lost / W.sent * 100).toFixed(1)}% of probes were lost in short bursts. That feels like brief freezes.`;
+  else v = 'No outages while watching. If it fails later, run this again at that moment, then run the full test.';
+  if (W.tower >= 3) v += ` The phone also changed tower ${W.tower} times, which usually means it is bouncing between cells.`;
+  $('#watchVerdict').textContent = v;
+}
+$('#watchBtn').addEventListener('click', () => watching ? (watching = false) : startWatch());
+$('#watchLen').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b || watching) return;
+  watchMin = +b.dataset.min; [...$('#watchLen').children].forEach(c => c.setAttribute('aria-pressed', c === b));
+});
+
+/* ---------- context chips ---------- */
+const GROUPS = [
+  ['Network type on the status bar', 'net', ['5G', '4G', '3G', 'Not sure']],
+  ['Signal bars', 'signal', ['Weak', 'Medium', 'Strong']],
+  ['Where are you', 'place', ['Indoors', 'Outdoors', 'Moving']],
+  ['VPN', 'vpn', ['Off', 'On']]
+];
+$('#groups').innerHTML = GROUPS.map(([l, k, o]) => `<div class="group"><div class="lbl">${l}</div><div class="chips" data-k="${k}">${o.map(x => `<button class="chip" aria-pressed="false">${x}</button>`).join('')}</div></div>`).join('');
+$('#groups').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  const k = b.parentElement.dataset.k, on = b.getAttribute('aria-pressed') === 'true';
+  [...b.parentElement.children].forEach(c => c.setAttribute('aria-pressed', 'false'));
+  manual[k] = on ? null : b.textContent; if (!on) b.setAttribute('aria-pressed', 'true');
+});
+$('#modeChips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return; mode = b.dataset.mode;
+  [...$('#modeChips').children].forEach(c => c.setAttribute('aria-pressed', c === b));
+});
+$('#runBtn').addEventListener('click', runTest);
+
+/* ---------- tabs ---------- */
+document.querySelector('.tabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+  ['test', 'watch', 'radio', 'tools', 'compare'].forEach(t => $('#tab-' + t).hidden = t !== b.dataset.tab);
+  if (b.dataset.tab === 'compare') renderCompare();
+  if (b.dataset.tab === 'tools') toolsOpen();
+});
+
+/* ---------- live pulse in header when idle ---------- */
+(async function live(){
+  for (;;){
+    if (!busy && !document.hidden){ const ms = await probe(GG, 2500); if (!busy) push(ms, 'live'); }
+    await sleep(1500);
+  }
+})();
+
+buildStages(); renderCompare(); draw(); radioBoot(); toolsBoot();
+})();
+</script>
+</body>
+</html>

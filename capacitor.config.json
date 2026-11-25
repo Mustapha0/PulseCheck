@@ -1,0 +1,6 @@
+{
+  "appId": "com.pulsecheck.app",
+  "appName": "Pulse Check",
+  "webDir": "www",
+  "server": { "androidScheme": "https" }
+}
